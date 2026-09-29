@@ -1,9 +1,12 @@
 package pl.lph.app
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -17,7 +20,9 @@ import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
@@ -25,6 +30,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            Log.d(
+                FCM_LOG_TAG,
+                "POST_NOTIFICATIONS granted=$granted"
+            )
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,14 +70,88 @@ class MainActivity : AppCompatActivity() {
         configureWebView()
         configureBackNavigation()
 
-        if (savedInstanceState == null) {
-            webView.loadUrl(HOME_URL)
-        } else {
-            val restored = webView.restoreState(savedInstanceState)
+        LphNotificationManager.createChannels(this)
+        LphNotificationManager.subscribeToDefaultTopics()
+        LphNotificationManager.logCurrentToken()
+        requestNotificationPermissionIfNeeded()
 
-            if (restored == null) {
-                webView.loadUrl(HOME_URL)
+        val notificationUrl =
+            getNotificationUrl(intent)
+
+        if (savedInstanceState == null) {
+            webView.loadUrl(
+                notificationUrl ?: HOME_URL
+            )
+        } else {
+            val restored =
+                webView.restoreState(
+                    savedInstanceState
+                )
+
+            if (notificationUrl != null) {
+                webView.loadUrl(
+                    notificationUrl
+                )
+            } else if (restored == null) {
+                webView.loadUrl(
+                    HOME_URL
+                )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        setIntent(intent)
+
+        getNotificationUrl(intent)
+            ?.let { url ->
+                webView.loadUrl(url)
+            }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
+    }
+
+    private fun getNotificationUrl(
+        sourceIntent: Intent?
+    ): String? {
+        val rawUrl =
+            sourceIntent
+                ?.getStringExtra(
+                    LphNotificationManager.EXTRA_URL
+                )
+                ?.trim()
+                .orEmpty()
+
+        if (rawUrl.isBlank()) {
+            return null
+        }
+
+        val uri =
+            try {
+                Uri.parse(rawUrl)
+            } catch (_: Exception) {
+                return null
+            }
+
+        return if (isLphUrl(uri)) {
+            uri.toString()
+        } else {
+            null
         }
     }
 
@@ -307,5 +396,8 @@ class MainActivity : AppCompatActivity() {
 
         private const val LOG_TAG =
             "LPH-WebView"
+
+        private const val FCM_LOG_TAG =
+            "LPH-FCM"
     }
 }

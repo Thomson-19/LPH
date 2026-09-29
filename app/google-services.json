@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1032751611122",
+    "project_id": "liga-poznego-hamowania",
+    "storage_bucket": "liga-poznego-hamowania.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1032751611122:android:299277b0eb01d7c785e46b",
+        "android_client_info": {
+          "package_name": "pl.lph.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFAE--90e8Rw7teRDu-Gu6zBSzuOxPgWM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
